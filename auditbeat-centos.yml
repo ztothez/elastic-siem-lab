@@ -1,0 +1,151 @@
+# ================================== AUDITBEAT YML CONFIG CentOs ===================================
+#=== Filebeat specific options ===
+#=== Filebeat modules ===
+filebeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: true
+  reload.period: 30s
+#=== Filebeat inputs ===
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/log/yum.log
+  close_inactive: 1m
+- type: log
+  enabled: true
+  paths:
+    - /var/log/pihole.log
+  fields:
+    app: pihole
+    name: pihole
+- type: log
+  enabled: true
+  paths:
+    - /var/log/pihole-FTL.log
+  fields:
+    app: pihole
+    name: pihole-FTL
+- type: log
+  enabled: true
+  paths:
+    - /var/log/pihole_updateGravity.log
+  fields:
+    app: pihole
+    name: pihole-updateGravity
+- type: log
+  enabled: true
+  paths:
+    - /var/log/lighttpd/*.log
+  fields:
+    app: pihole
+    name: pihole-lighttpd
+#=== Filebeat logging ===
+# Configure logging for Filebeat if you plan on using the GeoIP ingest processor
+# Initially use `info` for the logging.level, set logging.level to `debug` if you see
+# an `Failed to publish events: temporary bulk send failure` error message in the logs
+#logging.level: info
+#logging.to_files: true
+#logging.files:
+#  path: /var/log/elastic
+#  name: filebeat
+#  keepfiles: 7
+#  permissions: 0644
+# Configuration applicable for all beats on a specific device
+# ================================== General ===================================
+
+# The name of the shipper that publishes the network data. It can be used to group
+# all the transactions sent by a single shipper in the web interface.
+name: WindowsSystem
+
+# The tags of the shipper are included in their own field with each
+# transaction published.
+tags: ["Win10 VM1"]
+
+# Optional fields that you can specify to add additional information to the
+# output.
+fields:
+  env: home
+# ================================= Processors =================================
+processors:
+  - add_host_metadata:
+      netinfo.enabled: true
+      Geo: # These Geo configurations are optional
+        location: <redacted>, <redacted>
+        continent_name: <redacted>
+        country_iso_code: <redacted>
+        region_name: <redacted>
+        region_iso_code: <redacted>
+        city_name: <redacted>
+        name: myLocation
+  - add_locale: ~ 
+  - add_cloud_metadata: ~ 
+  - add_fields: 
+      when.network.source.ip: private 
+      fields: 
+        source.geo.location: 
+          lat: <redacted>
+          lon: <redacted>
+        source.geo.continent_name: <redacted>
+        source.geo.country_iso_code: <redacted>
+        source.geo.region_name:  <redacted>
+        source.geo.region_iso_code: <redacted>
+        source.geo.city_name: <redacted>
+        source.geo.name: myLocation
+      target: '' 
+  - add_fields: 
+      when.network.destination.ip: private 
+      fields: 
+        destination.geo.location: 
+          lat: <redacted>
+          lon: <redacted>
+        destination.geo.continent_name: <redacted>
+        destination.geo.country_iso_code: <redacted>
+        destination.geo.region_name: <redacted>
+        destination.geo.region_iso_code: <redacted>
+        destination.geo.city_name: <redacted>
+        destination.geo.name: myLocation
+      target: ''
+
+#=== Elastic Cloud ===
+# These settings simplify using beats with the Elastic Cloud (https://cloud.elastic.co/).
+cloud.id:<redacted>
+cloud.auth: <redacted>
+# The geoip-info pipeline is used to enrich GeoIP information in Elasticsearch
+# You must configure the pipeline in Elasticsearch before enabling the pipeline in Beats.
+# The `output.elasticsearch.pipeline: geoip-info` setting should be commented out until
+# until GitHub issue https://github.com/elastic/elasticsearch/issues/46193 is resolved
+output.elasticsearch.pipeline: geoip-info
+# The `max_retries` setting is the number of times to retry publishing an event after 
+# a publishing failure. After the specified number of retries, the events are typically dropped.
+output.elasticsearch.max_retries: 5
+# When deploying beats to multiple systems or locations, uncomment the following 
+# setup.template.* and setup.ilm.* configurations after running the beats setup command
+# Otherwise, uncomment the following configurations for beats that will only publish data
+#setup.template.enabled: false
+#setup.ilm.check_exists: false
+#setup.ilm.overwrite: false
+#=== Xpack Monitoring ===
+# When monitoring is enabled, the beat will ship monitoring data to the cluster
+monitoring.enabled: true
+#=== Queue ===
+# See the 'Configure the internal queue' documentation for each Beat before 
+# configuring the queue. Note that only one queue type can be configured.
+# You need to uncomment the specific queue type you decide to use.
+# The `queue.mem` settings will cache events to memory in case access to the
+# Elasticsearch cluster, via the internet, is unavailable (internet outage)
+#queue.mem:
+#  events: 4096
+#  flush.min_events: 512
+#  flush.timeout: 1s
+# The `queue.spool` settings will cache events to disk in case the system is offline
+# NOTE: The file spool queue is a beta functionality in 7.4
+queue.spool:
+  file:
+    size: 512MiB
+    page_size: 16KiB
+    prealloc: ~
+  write:
+    buffer_size: 10MiB
+    flush.timeout: 1s
+    flush.min.events: 1024
